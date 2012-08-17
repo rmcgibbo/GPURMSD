@@ -1,0 +1,12 @@
+**A Fast GPU, Python'd RMSD Code**
+
+This is a fairly straight-forward kernel to compute RMSD and LPRMSD.
+It has been wrapped into a python module via SWIG
+
+Instructions:
+
+0. ensure you have latest SWIG installed
+1. ensure you have CUDA 4.0 or higher installed
+2. run 'sh setup.sh'
+
+Refer to test_case.py for usage
