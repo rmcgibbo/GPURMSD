@@ -25,13 +25,13 @@ class NVCC(UnixCCompiler):
             raise ValueError('Could not find nvcc')
         UnixCCompiler.__init__(self)
         
-kernel = Extension('_GPURMSD',
-                   sources=['src/ext/GPURMSD/RMSD.cu'],
+kernel = Extension('_gpurmsd',
+                   sources=['src/ext/gpurmsd/RMSD.cu'],
                    extra_compile_args=['-arch=sm_20', '--ptxas-options=-v', '-c', '--compiler-options', "'-fPIC'"],
                    include_dirs=['/usr/local/cuda/include'],                   
                    )
-swig_wrapper = Extension('msmbuilder.GPURMSD._rmsd_gpu_python',
-                         sources=['src/ext/GPURMSD/swig.i'],
+swig_wrapper = Extension('msmbuilder.gpurmsd._rmsd_gpu_python',
+                         sources=['src/ext/gpurmsd/swig.i'],
                          swig_opts=['-c++'],
                          library_dirs=['/usr/local/cuda/lib64'],
                          libraries=['cudart'])
@@ -48,19 +48,19 @@ class custom_build_ext(build_ext):
 
         # switch the compiler based on which thing we're compiling
 
-        if args[0].name == '_GPURMSD':
+        if args[0].name == '_gpurmsd':
             # for _GPURMSD, we use the nvcc compiler
             # note that we've DISABLED the linking (by setting the linker to be "echo")
             # in the nvcc compiler
             self.compiler = self.nvcc
 
-        elif args[0].name == 'msmbuilder.GPURMSD._rmsd_gpu_python':
+        elif args[0].name == 'msmbuilder.gpurmsd._rmsd_gpu_python':
             # for _rmsd_gpu_python, we use regular gcc
             self.compiler = self.default_compiler
 
             # BUT, we need to also LINK the RMSD.o object file, so lets just
             # glob it onto the link line
-            paths_to_other_o_file = glob.glob('build/*/src/ext/GPURMSD/RMSD.o')
+            paths_to_other_o_file = glob.glob('build/*/src/ext/gpurmsd/RMSD.o')
             if len(paths_to_other_o_file) != 1:
                 raise RuntimeError('RMSD.o not found in temp')
             
@@ -76,8 +76,8 @@ try:
 except ImportError:
     print 'MSMBuilder not found!'
     
-setup(name='msmbuilder.GPURMSD',
-      packages=['msmbuilder.GPURMSD'],
-      package_dir={'msmbuilder.GPURMSD': 'src/python/GPURMSD'},
+setup(name='msmbuilder.gpurmsd',
+      packages=['msmbuilder.gpurmsd'],
+      package_dir={'msmbuilder.gpurmsd': 'src/python/gpurmsd'},
       ext_modules=[kernel, swig_wrapper],
       cmdclass={'build_ext': custom_build_ext})
