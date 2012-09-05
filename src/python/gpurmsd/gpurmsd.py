@@ -24,7 +24,7 @@ class GPURMSD(AbstractDistanceMetric):
         self._rmsd = _RMSD(np.array(xyzlist.swapaxes(0,1),
                                     dtype=np.float32,
                                     copy=True))
-        
+
         self._is_centered = False
       
 
@@ -45,7 +45,8 @@ class GPURMSD(AbstractDistanceMetric):
         self._rmsd.center_and_precompute_G()
         self._rmsd.all_against_one_rmsd(index1)
 
-        return results
+        # the results back from the GPU are RMSD**2, so we need to sqrt them first
+        return np.sqrt(results)
     
     def prepare_trajectory(self, trajectory):
         """
@@ -63,11 +64,11 @@ class GPURMSD(AbstractDistanceMetric):
             xyzlist = trajectory['XYZList']
         
         msg = 'I can only compute the trajectory that was given to __init__'
-
         if len(trajectory) != self.traj_length:
             raise ValueError(msg)
         hash = hashlib.sha1(xyzlist.view(np.uint8)).hexdigest()
         if hash != self.traj_hash:
             raise ValueError(msg)
 
+        # return the same argument that was passed in
         return trajectory
