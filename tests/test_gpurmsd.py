@@ -18,18 +18,35 @@ def test_gpurmsd():
     traj = Trajectory.LoadTrajectoryFile(trj_path)    
 
     gpurmsd = GPURMSD(traj)
+    gpurmsd._rmsd.print_params()
+    ptraj = gpurmsd.prepare_trajectory(traj)
+    gpu_distances = gpurmsd.one_to_all(ptraj, ptraj, 0)
+
+    cpurmsd = RMSD()
+    ptraj = cpurmsd.prepare_trajectory(traj)
+    cpu_distances = cpurmsd.one_to_all(ptraj, ptraj, 0)
+    
+    #pp.plot(distances, gpu_distances)
+    #pp.show()
+    npt.assert_array_almost_equal(cpu_distances, gpu_distances)
+
+def plot_gpu_cmd_correlation():
+    traj = Trajectory.LoadTrajectoryFile(trj_path)
+
+    gpurmsd = GPURMSD(traj)
+    gpurmsd._rmsd.print_params()
     ptraj = gpurmsd.prepare_trajectory(traj)
     gpu_distances = gpurmsd.one_to_all(ptraj, ptraj, 0)
 
     rmsd = RMSD()
     ptraj = rmsd.prepare_trajectory(traj)
-    distances = rmsd.one_to_all(ptraj, ptraj, 0)
+    cpu_distances = rmsd.one_to_all(ptraj, ptraj, 0)
     
-    #pp.plot(distances, gpu_distances)
-    #pp.show()
-    npt.assert_array_almost_equal(distances, gpu_distances)
+    pp.scatter(gpu_distances, cpu_distances)
+    pp.xlabel('gpu rmsd')
+    pp.ylabel('cpu rmsd')
+    pp.savefig('gpucpu_correlation.png')
     
-
 
 if __name__ == '__main__':
-    test_gpurmsd()
+    plot_gpu_cmd_correlation()
