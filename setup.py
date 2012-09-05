@@ -1,9 +1,10 @@
+import sys
 from distutils.core import setup
 from distutils.unixccompiler import UnixCCompiler
 from distutils.extension import Extension
 from distutils.command.build_ext import build_ext
 import subprocess
-import IPython as ip
+from subprocess import CalledProcessError
 import glob
 
 class NVCC(UnixCCompiler):
@@ -22,7 +23,8 @@ class NVCC(UnixCCompiler):
         try:
             subprocess.check_output('nvcc --help', shell=True)
         except CalledProcessError:
-            raise ValueError('Could not find nvcc')
+            print >> sys.stderr, 'Could not find nvcc, the nvidia cuda compiler'
+            sys.exit(1)
         UnixCCompiler.__init__(self)
         
 kernel = Extension('_gpurmsd',
