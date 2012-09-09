@@ -5,7 +5,7 @@
 
 using std::cout;
 
-void Rmsd::print_params() {
+void RMSD::print_params() {
     
     cout << "numAtoms: " << numAtoms_ << "\n";
     cout << "numConfs: " << numConfs_ << "\n";
@@ -16,7 +16,7 @@ void Rmsd::print_params() {
 
 }
 
-void Rmsd::set_rmsd_array(int numConfs, float *h_rmsds) {
+void RMSD::set_rmsd_array(int numConfs, float *h_rmsds) {
 
     assert(numConfs == numConfs_);
     h_rmsds_ = h_rmsds;
@@ -27,7 +27,7 @@ void Rmsd::set_rmsd_array(int numConfs, float *h_rmsds) {
 }
 
 /*
-void Rmsd::set_rot_mat_array(int numConfs, int RotMatSize, float *h_rot_mat) {
+void RMSD::set_rot_mat_array(int numConfs, int RotMatSize, float *h_rot_mat) {
 
     assert(numConfs == numConfs_);
     assert(RotMatSize == 9);
@@ -41,7 +41,7 @@ void Rmsd::set_rot_mat_array(int numConfs, int RotMatSize, float *h_rot_mat) {
 */
 
 /*
-void Rmsd::set_only_device_rot_mat_array() {
+void RMSD::set_only_device_rot_mat_array() {
 
     cudaError_t t;
     t=cudaMalloc((void **) &d_rot_mat_, numConfs_*sizeof(float)*9);
@@ -50,7 +50,7 @@ void Rmsd::set_only_device_rot_mat_array() {
 }
 */
 
-void Rmsd::set_subset_flag_array(int numConfs, int *h_subset_flag) {
+void RMSD::set_subset_flag_array(int numConfs, int *h_subset_flag) {
 
     assert(numConfs == numConfs_);
     h_subset_flag_ = h_subset_flag;
@@ -63,7 +63,7 @@ void Rmsd::set_subset_flag_array(int numConfs, int *h_subset_flag) {
 
 }
 
-void Rmsd::all_against_one_rmsd(int test_conf) {
+void RMSD::all_against_one_rmsd(int test_conf) {
 
     k_all_against_one_rmsd<<<numBlocks_,threadsperblock_>>>(numAtoms_, numConfs_, test_conf, d_X_, d_rmsds_, d_G_);
 
@@ -71,7 +71,7 @@ void Rmsd::all_against_one_rmsd(int test_conf) {
 
 }
 
-void Rmsd::all_against_one_lprmsd(int test_conf) {
+void RMSD::all_against_one_lprmsd(int test_conf) {
 
     assert(d_subset_flag_ != NULL);
     assert(h_subset_flag_ != NULL);
@@ -83,7 +83,7 @@ void Rmsd::all_against_one_lprmsd(int test_conf) {
 }
 
 /*
-void Rmsd::apply_rotation() {
+void RMSD::apply_rotation() {
 
     assert(d_rot_mat_ != NULL);
 
@@ -94,7 +94,7 @@ void Rmsd::apply_rotation() {
 }
 */
 
-Rmsd::Rmsd(int numAtoms, int numConfs, int numDimens, float* h_X) :
+RMSD::RMSD(int numAtoms, int numDimens, int numConfs, float* h_X) :
     numAtoms_(numAtoms), 
     numConfs_(numConfs), 
     numBlocks_(ceil( (float) numConfs_ / (float) threadsperblock_ )), 
@@ -130,7 +130,7 @@ Rmsd::Rmsd(int numAtoms, int numConfs, int numDimens, float* h_X) :
 
 }
 
-void Rmsd::center_and_precompute_G() {
+void RMSD::center_and_precompute_G() {
 
     assert(h_rmsds_ != NULL);
     assert(d_rmsds_ != NULL);
@@ -140,7 +140,7 @@ void Rmsd::center_and_precompute_G() {
 
 }
 
-void Rmsd::set_gpu_parameters() {
+void RMSD::set_gpu_parameters() {
 
     // this also does rotation
  
@@ -151,7 +151,7 @@ void Rmsd::set_gpu_parameters() {
 
 }
 
-void Rmsd::precompute_G() {
+void RMSD::precompute_G() {
 
     // kernel automatically takes care of conditions when
     // d_subset_flag_ is false
@@ -161,7 +161,7 @@ void Rmsd::precompute_G() {
 
 }
  
-void Rmsd::center_conformers() {
+void RMSD::center_conformers() {
 
     k_center_conformers<<<numBlocks_, threadsperblock_>>>(numConfs_,numAtoms_,d_X_,d_subset_flag_);
 
@@ -169,7 +169,7 @@ void Rmsd::center_conformers() {
 
 }
 
-Rmsd::~Rmsd() {
+RMSD::~RMSD() {
     cudaFree(d_X_);
     if( d_rmsds_ != NULL) {
     cudaFree(d_rmsds_);

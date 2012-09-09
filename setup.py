@@ -1,19 +1,41 @@
 import sys
-from distutils.core import setup
+from setuptools import setup
 from distutils.unixccompiler import UnixCCompiler
 from distutils.extension import Extension
 from distutils.command.build_ext import build_ext
 import subprocess
 from subprocess import CalledProcessError
 import glob
+import IPython as ip
+
+# make the clean command always run first
+sys.argv.insert(1, 'clean')
+sys.argv.insert(2, 'build')
+
+# now rebuild the swig wrapper
+# this is done because the python swigging always seems to want to name
+# everything swig_wrap.cpp
+subprocess.Popen('swig -c++ -python -o gpurmsd/swGPURMSD.cpp gpurmsd/swig.i', shell=True)
+
+# python distutils doesn't have NVCC by default. This is a total hack.
+# what we're going to 
+
+class MyExtension(Extension):
+    """subclass extension to add the kwarg 'glob_extra_link_args'
+    which will get evaluated by glob right before the extension gets compiled
+    and let the swig shared object get linked against the cuda kernel
+    """
+    def __init__(self, *args, **kwargs):
+        self.glob_extra_link_args = kwargs.pop('glob_extra_link_args', [])
+        Extension.__init__(self, *args, **kwargs)
 
 class NVCC(UnixCCompiler):
     src_extensions = ['.cu']
     executables = {'preprocessor' : None,
                    'compiler'     : ["nvcc"],
                    'compiler_so'  : ["nvcc"],
-                   'compiler_cxx' : ["dffd"],
-                   'linker_so'    : ["echo", "-shared"],
+                   'compiler_cxx' : ["nvcc"],
+                   'linker_so'    : ["echo"], # TURN OFF NVCC LINKING
                    'linker_exe'   : ["gcc"],
                    'archiver'     : ["ar", "-cr"],
                    'ranlib'       : None,
@@ -27,59 +49,59 @@ class NVCC(UnixCCompiler):
             sys.exit(1)
         UnixCCompiler.__init__(self)
         
-kernel = Extension('_gpurmsd',
-                   sources=['src/ext/gpurmsd/RMSD.cu'],
+kernel = Extension('RMSD',
+                   sources=['gpurmsd/RMSD.cu'],
                    extra_compile_args=['-arch=sm_20', '--ptxas-options=-v', '-c', '--compiler-options', "'-fPIC'"],
                    include_dirs=['/usr/local/cuda/include'],                   
                    )
-swig_wrapper = Extension('msmbuilder.gpurmsd._rmsd_gpu_python',
-                         sources=['src/ext/gpurmsd/swig.i'],
+swig_wrapper = MyExtension('gpurmsd._swGPURMSD',
+                         sources=['gpurmsd/swGPURMSD.cpp'],
                          swig_opts=['-c++'],
                          library_dirs=['/usr/local/cuda/lib64'],
-                         libraries=['cudart'])
+                         libraries=['cudart'],
+                         # extra bit of magic so that we link this
+                         # against the kernels -o file
+                         glob_extra_link_args=['build/*/gpurmsd/RMSD.o'])
 
 class custom_build_ext(build_ext):
     def build_extensions(self):
-
         # we're going to need to switch between compilers, so lets save both
         self.default_compiler = self.compiler
         self.nvcc = NVCC()
         build_ext.build_extensions(self)
 
     def build_extension(self, *args, **kwargs):
-
+        extension = args[0]
         # switch the compiler based on which thing we're compiling
-
-        if args[0].name == '_gpurmsd':
-            # for _GPURMSD, we use the nvcc compiler
+        # if any of the sources end with .cu, use nvcc
+        if any([e.endswith('.cu') for e in extension.sources]):
             # note that we've DISABLED the linking (by setting the linker to be "echo")
             # in the nvcc compiler
             self.compiler = self.nvcc
-
-        elif args[0].name == 'msmbuilder.gpurmsd._rmsd_gpu_python':
-            # for _rmsd_gpu_python, we use regular gcc
-            self.compiler = self.default_compiler
-
-            # BUT, we need to also LINK the RMSD.o object file, so lets just
-            # glob it onto the link line
-            paths_to_other_o_file = glob.glob('build/*/src/ext/gpurmsd/RMSD.o')
-            if len(paths_to_other_o_file) != 1:
-                raise RuntimeError('RMSD.o not found in temp')
-            
-            self.compiler.linker_so.append(paths_to_other_o_file[0])
-
         else:
             self.compiler = self.default_compiler
 
+        # evaluate the glob pattern and add it to the link line
+        # note, this suceeding with a glob pattern like build/temp*/gpurmsd/RMSD.o
+        # depends on the fact that this extension is built after the extension
+        # which creates that .o file
+        if hasattr(extension, 'glob_extra_link_args'):
+            for pattern in extension.glob_extra_link_args:
+                unglobbed = glob.glob(pattern)
+                if len(unglobbed) == 0:
+                    raise RuntimeError("glob_extra_link_args didn't match any files")
+                self.compiler.linker_so += unglobbed
+        
+        # call superclass
         build_ext.build_extension(self, *args, **kwargs)
 
-try:
-    import msmbuilder
-except ImportError:
-    print 'MSMBuilder not found!'
-    
-setup(name='msmbuilder.gpurmsd',
-      packages=['msmbuilder.gpurmsd'],
-      package_dir={'msmbuilder.gpurmsd': 'src/python/gpurmsd'},
+setup(name='msmbuilder.metrics.gpurmsd',
+      version='0.2',
+      packages = ['gpurmsd'],
       ext_modules=[kernel, swig_wrapper],
-      cmdclass={'build_ext': custom_build_ext})
+      cmdclass={'build_ext': custom_build_ext},
+      entry_points="""
+        [msmbuilder.metrics]
+         metric_class=gpurmsd.gpurmsd:GPURMSD
+         add_metric_parser=gpurmsd.gpurmsd:add_metric_parser
+         """)

@@ -13,13 +13,13 @@
 //"Rapid calculation of RMSDs using a quaternion-based characteristic polynomial." 
 //Acta Crystallogr A 61(4):478-480. [Open Access, pdf]
 
-class Rmsd {
+class RMSD {
 
     public:
         // construct an RMSD object, 
         // h_X is stored in ADP format
-        Rmsd(int numAtoms, int numConfs, int numDimens, float* h_X);
-        ~Rmsd();
+        RMSD(int numAtoms, int numDimens, int numConfs, float* h_X);
+        ~RMSD();
 
         // must always be set
         void set_rmsd_array(int numConfs, float *h_rmsds);
