@@ -1,8 +1,0 @@
-GPURMSD : Plugin for MSMBuilder
-===============================
-
-Install this package, and then MSMBuilder's Cluster.py
-will show up with a new metric, GPURMSD, using the new
-plugin mechanism.
-
-
